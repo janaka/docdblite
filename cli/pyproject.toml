@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "docdblite-cli"
+version = "0.0.1"
+description = "docdblite CLI."
+authors = ["Janaka Abeywardhana <contact@janaka.co.uk>"]
+license = ""
+readme = "README.md"
+homepage = "https://github.com/janaka/docdblite"
+repository = "https://github.com/janaka/docdblite"
+
+
+[tool.poetry.dependencies]
+python = "^3.11"
+docdblite = {path = "../docdblite", develop = true}
+
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.4"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.4.8"
+
+[tool.poe.tasks]
+
+
+[tool.poe.tasks.run]
+cmd = "poetry run python -m source.main"
+env = { PYTHONPATH = "${PWD}/..:${PWD}/../docdblite" }
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+

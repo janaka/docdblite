@@ -289,6 +289,6 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-.docdblitedata
+.docdblitedata*
 
 

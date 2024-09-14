@@ -1,0 +1,46 @@
+[tool.poetry]
+name = "docdblite"
+version = "0.0.1"
+description = "Embedded document database built on top of SQLite"
+authors = ["Janaka Abeywardhana <contact@janaka.co.uk>"]
+license = ""
+readme = "README.md"
+homepage = "https://github.com/janaka/docdblite"
+repository = "https://github.com/janaka/docdblite"
+packages = [
+    { include = "source", from = "." },
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.4"
+pytest-reverse = "^1.5.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.4.8"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = """
+--verbose \
+--maxfail=1 \
+--reverse \
+--color=yes
+"""
+testpaths = ["tests"]
+python_files = ["*_test.py"]
+python_functions = ["test_*"]
+
+
+
+[tool.poe.tasks]
+install = "poetry install --only main"
+test = "pytest tests/unit"
+
