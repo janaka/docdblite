@@ -1,8 +1,6 @@
-
-
 import json
 
-from docdblite.source.main import DocDbLite
+from docdblite import DocDbLite
 
 
 def main():

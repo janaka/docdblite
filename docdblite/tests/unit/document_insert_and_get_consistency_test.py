@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from docdblite.source.main import DocDbLite
+from docdblite import DocDbLite
 
 test_json_str = """{
   "id": "HOME001",
@@ -49,9 +49,8 @@ test_json_str = """{
 }"""
 
 @pytest.mark.unit
-def test_insert_and_get_consistency_of_doc() -> None:
-    
-
+def test_insert_json_str_and_get_consistency_of_doc() -> None:
+    """Insert one document json string and find one by id."""
     db = DocDbLite("../.docdblitedata-tests/db")
     testCollection = db.add_collection("testCollection")
 
@@ -59,6 +58,37 @@ def test_insert_and_get_consistency_of_doc() -> None:
     doc = testCollection.find_one(doc_id)
 
     expected_doc = json.loads(test_json_str)
-    
+
     assert len(expected_doc.items()) == len(doc.items())
     assert expected_doc == doc
+
+
+@pytest.mark.unit
+def test_insert_json_typed_and_get_consistency_of_doc() -> None:
+    """Insert one document json string and find one by id."""
+    db = DocDbLite("../.docdblitedata-tests/db")
+    testCollection = db.add_collection("testCollection")
+
+    doc1 = {"testKey1": "testValue1", "testKey2": {"testKey3": 100}}
+
+    doc_id = testCollection.insert_one(document=doc1)
+    doc_result = testCollection.find_one(doc_id)
+
+    assert len(doc1.items()) == len(doc_result.items())
+    assert doc1 == doc_result
+
+
+def test_count_documents() -> None:
+    """Insert one document json string and find one by id."""
+    db = DocDbLite("../.docdblitedata-tests/db")
+    testCollection = db.add_collection("testCollection")
+
+    doc1 = {"testKey1": "testValue1", "testKey2": {"testKey3": 100}}
+    doc2 = {"testKey1": "testValue2", "testKey2": {"testKey4": 100}}
+    doc3 = {"testKey1": "testValue3", "testKey2": {"testKey5": 100}}
+
+    testCollection.insert_one(document=doc1)
+    testCollection.insert_one(document=doc2)
+    testCollection.insert_one(document=doc3)
+
+    assert testCollection.count_documents({"testKey1": "testValue1"}) == 1
