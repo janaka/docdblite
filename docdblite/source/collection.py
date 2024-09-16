@@ -12,33 +12,33 @@ class Collection:
     def __init__(self, db_config: DbConfig, name: str):
         self.db_config = db_config
         self.name = name.strip().lower()
-        self.db_config.filename = f"{self.name}.sqlite"
-        self.db_ctx = DbCtx(self.db_config)
+        self.db_ctx = DbCtx(self.db_config, name)
         self._collection_documents_table_name = self.name
         self._collection_document_data_table_name = f"{self.name}_data"
 
-        # TODO: consider uuid form TEXT(36) to BLOB(16) for performance and space efficiency
+        # TODO: consider changing uuid from TEXT(36) to BLOB(16) for performance and space efficiency
         # each collection is database file with a table named after the collection
-        self.db_ctx.c.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {self._collection_documents_table_name} ( -- collection of documents table
-                uuid TEXT(36) PRIMARY KEY -- document id
+        with self.db_ctx as db:
+            db.conn.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {self._collection_documents_table_name} ( -- collection of documents table
+                    uuid TEXT(36) PRIMARY KEY -- document id
+                )
+                """
             )
-            """
-        )
-        self.db_ctx.c.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {self._collection_document_data_table_name} ( -- document data table
-                uuid TEXT(36) PRIMARY KEY, -- keyvalue id
-                doc_id TEXT(36) NOT NULL, -- document uuid
-                parent_uuid TEXT(36), -- parent keyvalue id
-                key TEXT NOT NULL,
-                type integer NOT NULL, -- type enum to map
-                value -- sqlite is dynamic typed. Type is a hint.
+            db.conn.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {self._collection_document_data_table_name} ( -- document data table
+                    uuid TEXT(36) PRIMARY KEY, -- keyvalue id
+                    doc_id TEXT(36) NOT NULL, -- document uuid
+                    parent_uuid TEXT(36), -- parent keyvalue id
+                    key TEXT NOT NULL,
+                    type integer NOT NULL, -- type enum to map
+                    value -- sqlite is dynamic typed. Type is a hint.
+                )
+                """
             )
-            """
-        )
-        self.db_ctx.conn.commit()
+            db.conn.commit()
 
     @staticmethod
     def _get_json_value_type(value) -> DbValueType:
@@ -123,7 +123,7 @@ class Collection:
         # print("add gen doc_id: ", doc_id)
 
         # parse the json, recurse through the json nodes, and insert each node into the table
-        def recurse_and_insert(node, parent_uuid):
+        def recurse_and_insert(node, parent_uuid, db: DbCtx):
             if isinstance(node, dict):  # node is JSON object
                 items = node.items()
             elif isinstance(node, list):  # node is a JSON array
@@ -136,7 +136,8 @@ class Collection:
                 _type = self._get_json_value_type(value)
                 _value = self._map_json_value_type_to_db_value(value, _type)
                 # print("key: ", key, "_type: ", _type, "_value: ", _value)
-                self.db_ctx.c.execute(
+
+                db.conn.execute(
                     f"""
                     INSERT INTO {self._collection_document_data_table_name} (uuid, doc_id, parent_uuid, key, type, value)
                     VALUES (?, ?, ?, ?, ?, ?)
@@ -151,41 +152,47 @@ class Collection:
                     ),  # Assuming type 1 for dict
                 )
                 if _value is None:  # not leaf node, so keep recursing
-                    recurse_and_insert(value, child_uuid)  # array or object so recurse
+                    recurse_and_insert(
+                        value, child_uuid, db
+                    )  # array or object so recurse
 
-        try:
-            self.db_ctx.c.execute("BEGIN TRANSACTION")
-            self.db_ctx.c.execute(
-                f"""
-              INSERT INTO {self._collection_documents_table_name} (uuid)
-              VALUES (?)
-              """,
-                (str(doc_id),),
-            )
+        with self.db_ctx as db:
+            try:
+                db.conn.execute("BEGIN TRANSACTION")
+                db.conn.execute(
+                    f"""
+                INSERT INTO {self._collection_documents_table_name} (uuid)
+                VALUES (?)
+                """,
+                    (str(doc_id),),
+                )
 
-            doc_data = json.loads(document) if isinstance(document, str) else document
-            recurse_and_insert(doc_data, None)
-            # self.db_ctx.c.execute("END TRANSACTION")
-            self.db_ctx.conn.commit()
-            return doc_id
-        except Exception as e:
-            self.db_ctx.c.execute("ROLLBACK TRANSACTION")
-            self.db_ctx.conn.commit()
-            raise e
+                doc_data = (
+                    json.loads(document) if isinstance(document, str) else document
+                )
+
+                recurse_and_insert(doc_data, None, db)
+
+                db.conn.commit()
+                return doc_id
+            except Exception as e:
+                db.conn.rollback()
+                raise e
 
     def find_one(self, uuid: ObjectId) -> Any:
         """Get a document from the collection.
         Returns:
             Any: The document.
         """
-        self.db_ctx.c.execute(
-            f"""
-            SELECT uuid, doc_id, parent_uuid, key, type, value FROM {self._collection_document_data_table_name}
-            WHERE doc_id = ?
-            """,
-            (str(uuid),),
-        )
-        all_nodes_data = self.db_ctx.c.fetchall()
+        with self.db_ctx as db:
+            result = db.conn.execute(
+                f"""
+                SELECT uuid, doc_id, parent_uuid, key, type, value FROM {self._collection_document_data_table_name}
+                WHERE doc_id = ?
+                """,
+                (str(uuid),),
+            )
+            all_nodes_data = result.fetchall()
 
         # print(all_nodes_data)
         # print("all nodes len: ", len(all_nodes_data))
@@ -243,35 +250,32 @@ class Collection:
 
     def count_documents(self, filter: Mapping[str, Any]) -> int:
         """Count documents in the collection that match the filter."""
-        self.db_ctx.c.execute(
-            f"SELECT DISTINCT COUNT(doc_id) FROM {self._collection_document_data_table_name} WHERE {self._filter_dict_to_sql_where(filter)}",
-        )
-        count = self.db_ctx.c.fetchone()[0]
-        print("count: ", self._filter_dict_to_sql_where(filter))
+
+        with self.db_ctx as db:
+            result = db.conn.execute(
+                f"SELECT DISTINCT COUNT(doc_id) FROM {self._collection_document_data_table_name} WHERE {self._filter_dict_to_sql_where(filter)}",
+            )
+            count = result.fetchone()[0]
+            # print("count: ", self._filter_dict_to_sql_where(filter))
         return int(count)
 
     def update(self, id, title, content):
-        pass
+        raise NotImplementedError("Update not yet supported")
 
     def delete_one(self, filter: Mapping[str, Any]) -> None:
         """Delete a document from the collection."""
-        self.db_ctx.c.execute(
-            f"SELECT doc_id WHERE {self._filter_dict_to_sql_where(filter)}"
-        )
-        doc_id = self.db_ctx.c.fetchone()[0]
-        self.db_ctx.c.execute("BEGIN TRANSACTION")
-        self.db_ctx.c.execute(
-            f"DELETE FROM {self._collection_document_data_table_name} WHERE doc_id = ?",
-            (doc_id,),
-        )
-        self.db_ctx.c.execute(
-            f"DELETE FROM {self._collection_documents_table_name} WHERE uuid = ?",
-            (doc_id,),
-        )
-        self.db_ctx.conn.commit()
+        with self.db_ctx as db:
+            result = db.conn.execute(
+                f"SELECT doc_id FROM {self._collection_document_data_table_name} WHERE {self._filter_dict_to_sql_where(filter)}"
+            )
+            doc_id = result.fetchone()[0]
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.db_ctx.conn.close()
+            db.conn.execute(
+                f"DELETE FROM {self._collection_document_data_table_name} WHERE doc_id = ?",
+                (doc_id,),
+            )
+            db.conn.execute(
+                f"DELETE FROM {self._collection_documents_table_name} WHERE uuid = ?",
+                (doc_id,),
+            )
+            db.conn.commit()

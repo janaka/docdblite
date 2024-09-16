@@ -1,4 +1,4 @@
-from typing import Self
+from typing import Optional, Self
 
 from source.collection import Collection
 from source.db_config import DbConfig
@@ -7,31 +7,43 @@ from source.object_id import ObjectId
 
 
 class DocDbLite:
-    def __init__(self, db_dir: str):
-        self.db_dir = db_dir
-        self.system_db_ctx = DbCtx(DbConfig(self.db_dir, "system.sqlite"))
+    """This is the DocDb Lite client."""
+
+    def __init__(self, config: Optional[DbConfig] = None):
+        self.db_config = config or DbConfig()
+        self.system_db_ctx = DbCtx(self.db_config, "system")
         self._create_collections_table()
         self._collections_table_name = "collections"
+        self.collections = {}
 
     def _create_collections_table(self):
-        self.system_db_ctx.c.execute(
-            """
-            CREATE TABLE IF NOT EXISTS collections (
-                uuid TEXT PRIMARY KEY, -- UUID
-                name TEXT NOT NULL
+        with self.system_db_ctx as sys_db:
+            sys_db.conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS collections (
+                    uuid TEXT PRIMARY KEY, -- UUID
+                    name TEXT NOT NULL
+                )
+                """
             )
-            """
-        )
+            sys_db.conn.commit()
+
+    collections: dict[str, Collection]
 
     def add_collection(self: Self, name) -> Collection:
-        db_cfg = DbConfig(self.db_dir, f"{name}.sqlite")
-        self.system_db_ctx.c.execute(
-            f"""
-            INSERT INTO {self._collections_table_name} (uuid, name)
-            VALUES (?, ?)
-            """,
-            (str(ObjectId()), name),
-        )
-        self.system_db_ctx.conn.commit()
-        self.system_db_ctx.close()
-        return Collection(db_cfg, name)
+        if name in self.collections:
+            return self.collections[name]
+
+        # Create a new collection
+        with self.system_db_ctx as sys_db:
+            sys_db.conn.execute(
+                f"""
+                INSERT INTO {self._collections_table_name} (uuid, name)
+                VALUES (?, ?)
+                """,
+                (str(ObjectId()), name),
+            )
+            sys_db.conn.commit()
+
+        self.collections[name] = Collection(self.db_config, name)
+        return self.collections[name]

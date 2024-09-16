@@ -2,9 +2,11 @@
 
 This test verified that data is serialised into the documents table and then deserialised back out of the table correctly.
 """
+
 import json
 
 import pytest
+from source.db_config import DbConfig
 
 from docdblite import DocDbLite
 
@@ -51,7 +53,7 @@ test_json_str = """{
 @pytest.mark.unit
 def test_insert_json_str_and_get_consistency_of_doc() -> None:
     """Insert one document json string and find one by id."""
-    db = DocDbLite("../.docdblitedata-tests/db")
+    db = DocDbLite(DbConfig("../.docdblitedata-tests"))
     testCollection = db.add_collection("testCollection")
 
     doc_id = testCollection.insert_one(document=test_json_str)
@@ -66,10 +68,11 @@ def test_insert_json_str_and_get_consistency_of_doc() -> None:
 @pytest.mark.unit
 def test_insert_json_typed_and_get_consistency_of_doc() -> None:
     """Insert one document json string and find one by id."""
-    db = DocDbLite("../.docdblitedata-tests/db")
+
+    db = DocDbLite(DbConfig("../.docdblitedata-tests"))
     testCollection = db.add_collection("testCollection")
 
-    doc1 = {"testKey1": "testValue1", "testKey2": {"testKey3": 100}}
+    doc1 = {"testKey100": "testValue1234", "testKey233": {"testKey2343": 1001}}
 
     doc_id = testCollection.insert_one(document=doc1)
     doc_result = testCollection.find_one(doc_id)
@@ -80,15 +83,24 @@ def test_insert_json_typed_and_get_consistency_of_doc() -> None:
 
 def test_count_documents() -> None:
     """Insert one document json string and find one by id."""
-    db = DocDbLite("../.docdblitedata-tests/db")
+    db = DocDbLite(DbConfig("../.docdblitedata-tests"))
     testCollection = db.add_collection("testCollection")
 
     doc1 = {"testKey1": "testValue1", "testKey2": {"testKey3": 100}}
-    doc2 = {"testKey1": "testValue2", "testKey2": {"testKey4": 100}}
-    doc3 = {"testKey1": "testValue3", "testKey2": {"testKey5": 100}}
+    doc2 = {"testKey1": "testValue1", "testKey2": {"testKey4": 100}}
+    doc3 = {"testKey1": "testValue1", "testKey2": {"testKey5": 100}}
 
     testCollection.insert_one(document=doc1)
     testCollection.insert_one(document=doc2)
     testCollection.insert_one(document=doc3)
 
+    assert testCollection.count_documents({"testKey1": "testValue1"}) == 3
+
+    testCollection.delete_one({"testKey1": "testValue1"})
+    assert testCollection.count_documents({"testKey1": "testValue1"}) == 2
+
+    testCollection.delete_one({"testKey1": "testValue1"})
     assert testCollection.count_documents({"testKey1": "testValue1"}) == 1
+
+    testCollection.delete_one({"testKey1": "testValue1"})
+    assert testCollection.count_documents({"testKey1": "testValue1"}) == 0

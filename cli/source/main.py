@@ -4,9 +4,7 @@ from docdblite import DocDbLite
 
 
 def main():
-    
-
-    db = DocDbLite("../.docdblitedata/db")
+    db = DocDbLite()
 
     testCollection = db.add_collection("test")
     doc_id = testCollection.insert_one(document='{"key": "value"}')
