@@ -19,7 +19,9 @@ class ObjectId:
     Attributes:
         value (str): The UUIDv7 string representation.
     """
+
     __slots__ = ("value",)
+
     def __init__(self, uuid: Optional[str] = None):
         if uuid is None:
             self.value: str = str(uuid7())
