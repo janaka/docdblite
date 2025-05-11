@@ -42,11 +42,9 @@ class DbCtx:
                 detect_types=sqlite3.PARSE_DECLTYPES,
                 cached_statements=self.db_cfg.cached_statements,
             )
-            conn.execute("PRAGMA journal_mode=WAL;")
-            self.pool.put(conn)
-
-        # self.conn = self.get_connection()
-        # self.c = self.conn.cursor()
+            # WAL mode needs to be enabled for each connection
+            self._enable_wal_mode(connection=conn)
+            self.pool.put(item=conn)
 
     def _build_database_filename(self, database_name: str) -> str:
         return f"{database_name}.sqlite"
