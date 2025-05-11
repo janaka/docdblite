@@ -8,4 +8,4 @@ This is currently a prototype implemented purely in Python. The idea would be to
 
 [MIT License](./LICENSE)
 
-Copyright (c) 2024 Janaka Abeywardhana
+Copyright (c) 2024-2025 Janaka Abeywardhana

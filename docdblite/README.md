@@ -1,5 +1,5 @@
-# Tokyo Agents
+# DocDBLite
 
-Agents framework
+[MIT License](../LICENSE)
 
-Copyright (c) 2024 Janaka Abeywardhana
+Copyright (c) 2024-2025 Janaka Abeywardhana
