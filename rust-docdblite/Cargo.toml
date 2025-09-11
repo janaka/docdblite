@@ -1,0 +1,24 @@
+[package]
+name = "docdblite"
+version = "0.1.0"
+edition = "2021"
+authors = ["Janaka Abeywardhana <contact@janaka.co.uk>"]
+license = "MIT"
+description = "Embedded document database built on top of SQLite"
+homepage = "https://github.com/janaka/docdblite"
+repository = "https://github.com/janaka/docdblite"
+
+[lib]
+name = "docdblite"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+rusqlite = { version = "0.32", features = ["bundled", "uuid"] }
+uuid = { version = "1.0", features = ["v4", "v7", "serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+dirs = "5.0"
+
+[dev-dependencies]
+tempfile = "3.0"
