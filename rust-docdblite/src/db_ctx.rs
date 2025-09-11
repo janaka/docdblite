@@ -79,13 +79,13 @@ impl ConnectionPool {
         // Set timeout
         conn.busy_timeout(Duration::from_millis(self.config.timeout_ms as u64))?;
 
-        // Enable WAL mode for better concurrency (this PRAGMA returns a result)
+        // Enable WAL mode for better concurrency (this returns the new mode)
         let _: String = conn.query_row("PRAGMA journal_mode=WAL", [], |row| row.get(0))?;
         
-        // Set other pragmas for better performance  
-        let _: String = conn.query_row("PRAGMA synchronous=NORMAL", [], |row| row.get(0))?;
-        let _: String = conn.query_row("PRAGMA temp_store=MEMORY", [], |row| row.get(0))?;
-        let _: i64 = conn.query_row(&format!("PRAGMA cache_size={}", self.config.cached_statements), [], |row| row.get(0))?;
+        // Set other pragmas - these don't return values when setting
+        conn.execute("PRAGMA synchronous=NORMAL", [])?;
+        conn.execute("PRAGMA temp_store=MEMORY", [])?;
+        conn.execute(&format!("PRAGMA cache_size={}", self.config.cached_statements), [])?;
 
         Ok(conn)
     }
@@ -140,6 +140,7 @@ impl Drop for ConnectionGuard {
 
 /// Simplified connection pool for easier use
 /// This is a simpler implementation that doesn't require the complex pooling
+#[derive(Clone)]
 pub struct SimpleDbCtx {
     config: DbConfig,
     database_name: String,
@@ -174,13 +175,13 @@ impl SimpleDbCtx {
         // Set timeout
         conn.busy_timeout(Duration::from_millis(self.config.timeout_ms as u64))?;
 
-        // Enable WAL mode for better concurrency (this PRAGMA returns a result)
+        // Enable WAL mode for better concurrency (this returns the new mode)
         let _: String = conn.query_row("PRAGMA journal_mode=WAL", [], |row| row.get(0))?;
         
-        // Set other pragmas for better performance  
-        let _: String = conn.query_row("PRAGMA synchronous=NORMAL", [], |row| row.get(0))?;
-        let _: String = conn.query_row("PRAGMA temp_store=MEMORY", [], |row| row.get(0))?;
-        let _: i64 = conn.query_row(&format!("PRAGMA cache_size={}", self.config.cached_statements), [], |row| row.get(0))?;
+        // Set other pragmas - these don't return values when setting
+        conn.execute("PRAGMA synchronous=NORMAL", [])?;
+        conn.execute("PRAGMA temp_store=MEMORY", [])?;
+        conn.execute(&format!("PRAGMA cache_size={}", self.config.cached_statements), [])?;
 
         f(&mut conn)
     }

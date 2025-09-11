@@ -11,6 +11,7 @@ use crate::error::{DocDbError, Result};
 use crate::object_id::ObjectId;
 
 /// A collection of documents
+#[derive(Clone)]
 pub struct Collection {
     ctx: SimpleDbCtx,
     pub name: String,

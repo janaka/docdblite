@@ -8,6 +8,10 @@ description = "Embedded document database built on top of SQLite"
 homepage = "https://github.com/janaka/docdblite"
 repository = "https://github.com/janaka/docdblite"
 
+[lib]
+name = "docdblite"
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 rusqlite = { version = "0.32", features = ["bundled", "uuid"] }
 uuid = { version = "1.0", features = ["v4", "v7", "serde"] }

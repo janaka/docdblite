@@ -10,6 +10,7 @@ pub mod db_value_type;
 pub mod doc_db_lite;
 pub mod error;
 pub mod object_id;
+pub mod ffi;
 
 pub use collection::Collection;
 pub use db_config::DbConfig;
